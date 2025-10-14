@@ -3,8 +3,25 @@ import pandas as pd
 import numpy as np
 from predict import TsunamiPredictor
 from datetime import datetime
+from streamlit_geolocation import streamlit_geolocation
 
 st.set_page_config(page_title="Tsunami Prediction", page_icon="🌊", layout="wide")
+
+# Major cities and earthquake-prone locations with coordinates
+MAJOR_LOCATIONS = {
+    "Custom Location": (None, None),
+    "Tokyo, Japan": (35.6762, 139.6503),
+    "Los Angeles, USA": (34.0522, -118.2437),
+    "San Francisco, USA": (37.7749, -122.4194),
+    "Manila, Philippines": (14.5995, 120.9842),
+    "Jakarta, Indonesia": (-6.2088, 106.8456),
+    "Wellington, New Zealand": (-41.2865, 174.7762),
+    "Anchorage, Alaska": (61.2181, -149.9003),
+    "Vancouver, Canada": (49.2827, -123.1207),
+    "Athens, Greece": (37.9838, 23.7275),
+    "Mexico City, Mexico": (19.4326, -99.1332),
+    "Pune, India": (18.5246, 73.8786),
+}
 
 st.title("🌊 Tsunami Early Warning System")
 st.markdown(
@@ -23,26 +40,127 @@ def load_model():
 try:
     predictor = load_model()
 
+    # Location selection method
+    st.markdown("### 📍 Choose Location Input Method")
+    location_method = st.radio(
+        "How would you like to set the location?",
+        ["Select from Major Cities", "Use My Current Location", "Enter Manually"],
+        horizontal=True,
+        help="Choose a pre-defined city, use your device's GPS, or enter coordinates manually",
+    )
+
+    # Initialize session state for location
+    if "user_latitude" not in st.session_state:
+        st.session_state.user_latitude = 35.0
+    if "user_longitude" not in st.session_state:
+        st.session_state.user_longitude = 140.0
+
+    latitude = st.session_state.user_latitude
+    longitude = st.session_state.user_longitude
+
+    if location_method == "Select from Major Cities":
+        selected_city = st.selectbox(
+            "🌆 Select a Major City or Earthquake-Prone Location",
+            options=list(MAJOR_LOCATIONS.keys())[1:],  # Exclude "Custom Location"
+            help="Choose from major earthquake-prone cities around the world",
+        )
+        if selected_city:
+            latitude, longitude = MAJOR_LOCATIONS[selected_city]
+            st.session_state.user_latitude = latitude
+            st.session_state.user_longitude = longitude
+            st.success(
+                f"📍 Location set to: **{selected_city}** ({latitude:.4f}, {longitude:.4f})"
+            )
+
+    elif location_method == "Use My Current Location":
+        st.info("🌐 Click the button below to get your current location")
+
+        if st.button("📍 Get My Location", type="primary"):
+            location = streamlit_geolocation()
+
+            if location and location.get("latitude") and location.get("longitude"):
+                st.session_state.user_latitude = location["latitude"]
+                st.session_state.user_longitude = location["longitude"]
+                latitude = location["latitude"]
+                longitude = location["longitude"]
+
+                st.success(f"✅ Location retrieved successfully!")
+                st.write(f"**Latitude:** {latitude:.6f}")
+                st.write(f"**Longitude:** {longitude:.6f}")
+
+                # Display location on map
+                st.map(pd.DataFrame({"lat": [latitude], "lon": [longitude]}))
+            else:
+                st.warning(
+                    "⚠️ No location information available. Please grant location permission in your browser."
+                )
+                st.info(
+                    "💡 If location access is blocked, you can enter coordinates manually below."
+                )
+
+        st.markdown("---")
+        st.markdown("**Or enter your coordinates manually:**")
+        col_loc1, col_loc2 = st.columns(2)
+        with col_loc1:
+            manual_lat = st.number_input(
+                "Your Latitude",
+                value=st.session_state.user_latitude,
+                min_value=-90.0,
+                max_value=90.0,
+                step=0.0001,
+                format="%.4f",
+                key="manual_lat",
+            )
+        with col_loc2:
+            manual_lon = st.number_input(
+                "Your Longitude",
+                value=st.session_state.user_longitude,
+                min_value=-180.0,
+                max_value=180.0,
+                step=0.0001,
+                format="%.4f",
+                key="manual_lon",
+            )
+
+        st.session_state.user_latitude = manual_lat
+        st.session_state.user_longitude = manual_lon
+        latitude = manual_lat
+        longitude = manual_lon
+
+        st.caption(
+            "💡 Tip: You can find your coordinates using Google Maps - right-click on your location and select the coordinates."
+        )
+
     col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("📍 Earthquake Epicenter")
-        latitude = st.number_input(
-            "Latitude",
-            value=35.0,
-            min_value=-90.0,
-            max_value=90.0,
-            step=0.1,
-            help="Latitude of earthquake epicenter",
-        )
-        longitude = st.number_input(
-            "Longitude",
-            value=140.0,
-            min_value=-180.0,
-            max_value=180.0,
-            step=0.1,
-            help="Longitude of earthquake epicenter",
-        )
+
+        if location_method == "Enter Manually":
+            latitude = st.number_input(
+                "Latitude",
+                value=st.session_state.user_latitude,
+                min_value=-90.0,
+                max_value=90.0,
+                step=0.1,
+                help="Latitude of earthquake epicenter",
+                key="custom_lat",
+            )
+            longitude = st.number_input(
+                "Longitude",
+                value=st.session_state.user_longitude,
+                min_value=-180.0,
+                max_value=180.0,
+                step=0.1,
+                help="Longitude of earthquake epicenter",
+                key="custom_lon",
+            )
+            st.session_state.user_latitude = latitude
+            st.session_state.user_longitude = longitude
+        else:
+            # Display selected location
+            st.metric("Latitude", f"{latitude:.4f}°")
+            st.metric("Longitude", f"{longitude:.4f}°")
 
     with col2:
         st.subheader("🌍 Earthquake Properties")
