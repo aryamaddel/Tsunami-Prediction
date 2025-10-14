@@ -14,11 +14,13 @@ A machine learning system to predict tsunami severity and intensity based on ear
 ## Setup
 
 1. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 2. Train the models:
+
 ```bash
 python train.py
 ```
@@ -26,6 +28,7 @@ python train.py
 This will create `tsunami_models.pth` file with trained models.
 
 3. Run the Streamlit app:
+
 ```bash
 streamlit run app.py
 ```
@@ -33,6 +36,7 @@ streamlit run app.py
 ## Usage
 
 The web app allows you to:
+
 - Input earthquake magnitude, location, and water height
 - Set tsunami intensity and other parameters
 - Get predictions for severity (Minor/Moderate/Major/Extreme)
@@ -49,6 +53,7 @@ The web app allows you to:
 ## Dataset
 
 The model is trained on historical tsunami data with features:
+
 - Year, Month, Day, Hour, Minute, Second
 - Tsunami Event Validity, Tsunami Cause Code
 - Earthquake Magnitude, Volcanic Activity
