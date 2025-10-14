@@ -1,13 +1,13 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-from model import TsunamiPredictor
+from model import TsunamiNet
 
 
 class TsunamiPredictor:
     def __init__(self, model_path="tsunami_models.pth"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        checkpoint = torch.load(model_path, map_location=self.device)
+        checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
 
         self.scaler = checkpoint["scaler"]
         self.imputer = checkpoint["imputer"]
@@ -16,10 +16,8 @@ class TsunamiPredictor:
         self.intensity_classes = checkpoint["intensity_classes"]
         self.input_size = checkpoint["input_size"]
 
-        from model import TsunamiPredictor as Model
-
-        self.model_severity = Model(self.input_size, [64, 32], 4, 0.3)
-        self.model_intensity = Model(self.input_size, [64, 32], 2, 0.3)
+        self.model_severity = TsunamiNet(self.input_size, [64, 32], 4, 0.3)
+        self.model_intensity = TsunamiNet(self.input_size, [64, 32], 2, 0.3)
 
         self.model_severity.load_state_dict(checkpoint["severity_model"])
         self.model_intensity.load_state_dict(checkpoint["intensity_model"])

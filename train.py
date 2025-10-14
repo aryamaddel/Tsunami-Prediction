@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
-from model import TsunamiPredictor
+from model import TsunamiNet
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -170,10 +170,11 @@ if __name__ == "__main__":
     )
     test_loader_int = DataLoader(test_dataset_int, batch_size=batch_size, shuffle=False)
 
+    
     input_size = X_scaled.shape[1]
-    model_severity = TsunamiPredictor(input_size, [64, 32], 4, 0.3)
-    model_intensity = TsunamiPredictor(input_size, [64, 32], 2, 0.3)
-
+    model_severity = TsunamiNet(input_size, [64, 32], 4, 0.3)
+    model_intensity = TsunamiNet(input_size, [64, 32], 2, 0.3)
+    
     print("Training Severity Classification Model")
     model_severity, sev_best = train_model(
         model_severity,

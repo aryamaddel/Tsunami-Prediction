@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class TsunamiPredictor(nn.Module):
+class TsunamiNet(nn.Module):
     def __init__(self, input_size, hidden_sizes, num_classes, dropout_rate=0.3):
-        super(TsunamiPredictor, self).__init__()
+        super(TsunamiNet, self).__init__()
         layers = []
         prev_size = input_size
         for hidden_size in hidden_sizes:
