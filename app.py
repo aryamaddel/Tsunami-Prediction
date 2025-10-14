@@ -6,9 +6,12 @@ from datetime import datetime
 
 st.set_page_config(page_title="Tsunami Prediction", page_icon="🌊", layout="wide")
 
-st.title("🌊 Tsunami Prediction System")
+st.title("🌊 Tsunami Early Warning System")
 st.markdown(
-    "Predict tsunami severity and intensity based on earthquake and geological data"
+    "Predict tsunami risk and characteristics based on **earthquake parameters only**"
+)
+st.info(
+    "ℹ️ Enter earthquake details below. The system will predict if a tsunami will occur and its potential severity."
 )
 
 
@@ -20,51 +23,50 @@ def load_model():
 try:
     predictor = load_model()
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("📍 Location Data")
+        st.subheader("📍 Earthquake Epicenter")
         latitude = st.number_input(
-            "Latitude", value=35.0, min_value=-90.0, max_value=90.0, step=0.1
+            "Latitude",
+            value=35.0,
+            min_value=-90.0,
+            max_value=90.0,
+            step=0.1,
+            help="Latitude of earthquake epicenter",
         )
         longitude = st.number_input(
-            "Longitude", value=140.0, min_value=-180.0, max_value=180.0, step=0.1
+            "Longitude",
+            value=140.0,
+            min_value=-180.0,
+            max_value=180.0,
+            step=0.1,
+            help="Longitude of earthquake epicenter",
         )
 
     with col2:
-        st.subheader("🌍 Earthquake Data")
+        st.subheader("🌍 Earthquake Properties")
         earthquake_magnitude = st.number_input(
-            "Earthquake Magnitude", value=7.0, min_value=0.0, max_value=10.0, step=0.1
-        )
-        water_height = st.number_input(
-            "Maximum Water Height (m)",
-            value=5.0,
-            min_value=0.0,
-            max_value=100.0,
-            step=0.5,
-        )
-
-    with col3:
-        st.subheader("📊 Additional Parameters")
-        intensity = st.slider("Tsunami Intensity", 0, 5, 3)
-        tsunami_magnitude_abe = st.number_input(
-            "Tsunami Magnitude (Abe)",
-            value=0.0,
+            "Earthquake Magnitude (Richter Scale)",
+            value=7.0,
             min_value=0.0,
             max_value=10.0,
             step=0.1,
+            help="Magnitude of the earthquake on Richter scale",
         )
-        tsunami_magnitude_iida = st.number_input(
-            "Tsunami Magnitude (Iida)",
-            value=0.0,
+        earthquake_depth = st.number_input(
+            "Earthquake Depth (km)",
+            value=10.0,
             min_value=0.0,
-            max_value=10.0,
-            step=0.1,
+            max_value=700.0,
+            step=1.0,
+            help="Depth of earthquake hypocenter in kilometers",
         )
 
     with st.expander("⚙️ Advanced Settings (Optional)", expanded=False):
         col_adv1, col_adv2 = st.columns(2)
         with col_adv1:
+            st.markdown("**Event Timing**")
             year = st.number_input(
                 "Year", value=datetime.now().year, min_value=1900, max_value=2100
             )
@@ -75,43 +77,54 @@ try:
                 "Day", value=datetime.now().day, min_value=1, max_value=31
             )
         with col_adv2:
-            event_validity = st.selectbox("Event Validity", [1, 2, 3, 4], index=3)
-            cause_code = st.selectbox("Cause Code", [1, 2, 3, 4], index=0)
-            num_runups = st.number_input(
-                "Number of Runups", value=1, min_value=0, max_value=100
+            st.markdown("**Event Classification**")
+            cause_code = st.selectbox(
+                "Tsunami Cause",
+                options=[1, 2, 3, 4],
+                format_func=lambda x: {
+                    1: "Earthquake",
+                    2: "Volcanic Eruption",
+                    3: "Landslide",
+                    4: "Other",
+                }.get(x, "Unknown"),
+                index=0,
+                help="Primary cause of potential tsunami",
+            )
+            vol = st.number_input(
+                "Volcanic Explosivity Index (VEI)",
+                value=0,
+                min_value=0,
+                max_value=8,
+                help="Only relevant if cause is volcanic (0 = not volcanic)",
             )
 
-    if st.button("🔮 Predict Tsunami", type="primary", use_container_width=True):
-        with st.spinner("Analyzing data..."):
+    if st.button("🔮 Predict Tsunami Risk", type="primary", use_container_width=True):
+        with st.spinner("Analyzing earthquake data..."):
             result = predictor.predict(
                 earthquake_magnitude=earthquake_magnitude,
                 latitude=latitude,
                 longitude=longitude,
-                water_height=water_height,
-                tsunami_magnitude_abe=(
-                    tsunami_magnitude_abe if tsunami_magnitude_abe > 0 else None
-                ),
-                tsunami_magnitude_iida=(
-                    tsunami_magnitude_iida if tsunami_magnitude_iida > 0 else None
-                ),
-                intensity=intensity,
+                earthquake_depth=earthquake_depth,
                 year=year,
                 month=month,
                 day=day,
-                event_validity=event_validity,
                 cause_code=cause_code,
-                num_runups=num_runups,
+                vol=vol,
             )
 
-        st.success("Prediction Complete!")
+        st.success("✅ Prediction Complete!")
+
+        # Display tsunami risk assessment
+        st.markdown("---")
+        st.markdown("## 🌊 Tsunami Risk Assessment")
 
         col_res1, col_res2 = st.columns(2)
 
         with col_res1:
             st.metric(
-                label="Tsunami Severity",
+                label="Predicted Tsunami Severity",
                 value=result["severity"],
-                delta=result["severity_confidence"],
+                delta=f"Confidence: {result['severity_confidence']}",
             )
             severity_color = {
                 "Minor": "🟢",
@@ -125,9 +138,9 @@ try:
 
         with col_res2:
             st.metric(
-                label="Tsunami Intensity",
+                label="Predicted Tsunami Intensity",
                 value=result["intensity"],
-                delta=result["intensity_confidence"],
+                delta=f"Confidence: {result['intensity_confidence']}",
             )
             intensity_color = {"Low Intensity": "🟢", "High Intensity": "🔴"}
             st.markdown(
@@ -136,21 +149,37 @@ try:
 
         st.divider()
 
-        st.subheader("📋 Input Summary")
+        # Display warning based on severity
+        if result["severity"] in ["Major", "Extreme"]:
+            st.error(
+                "🚨 **HIGH TSUNAMI RISK DETECTED** - Immediate evacuation recommended for coastal areas!"
+            )
+        elif result["severity"] == "Moderate":
+            st.warning(
+                "⚠️ **MODERATE TSUNAMI RISK** - Stay alert and monitor official warnings."
+            )
+        else:
+            st.info("ℹ️ **LOW TSUNAMI RISK** - Remain cautious near coastal areas.")
+
+        st.subheader("📋 Earthquake Input Summary")
         summary_data = {
             "Parameter": [
                 "Earthquake Magnitude",
+                "Earthquake Depth (km)",
                 "Latitude",
                 "Longitude",
-                "Water Height (m)",
-                "Tsunami Intensity",
+                "Event Date",
+                "Tsunami Cause",
             ],
             "Value": [
                 earthquake_magnitude,
+                earthquake_depth,
                 latitude,
                 longitude,
-                water_height,
-                intensity,
+                f"{year}-{month:02d}-{day:02d}",
+                {1: "Earthquake", 2: "Volcanic", 3: "Landslide", 4: "Other"}.get(
+                    cause_code, "Unknown"
+                ),
             ],
         }
         st.dataframe(
@@ -158,25 +187,55 @@ try:
         )
 
     st.divider()
-    st.markdown("### 📖 About")
+    st.markdown("### 📖 About This System")
     st.info(
         """
-    This system uses a PyTorch neural network trained on historical tsunami data to predict:
+    This **Tsunami Early Warning System** uses a PyTorch neural network trained on historical tsunami data to predict:
+    - **Tsunami Occurrence Risk**: Based solely on earthquake parameters
     - **Severity**: Minor, Moderate, Major, or Extreme
     - **Intensity**: Low or High
     
-    The model considers earthquake magnitude, location, water height, and other geological factors.
+    **How it works**: The model analyzes earthquake characteristics (magnitude, location, depth) to predict 
+    whether a tsunami will occur and its potential impact - **without needing to know tsunami parameters in advance**.
     """
     )
 
-    with st.expander("ℹ️ How to Use"):
+    with st.expander("ℹ️ How to Use This System"):
         st.markdown(
             """
-        1. Enter the **location** (latitude and longitude) of the event
-        2. Specify **earthquake magnitude** and **water height**
-        3. Adjust **tsunami intensity** and other parameters as needed
-        4. Click **Predict Tsunami** to get results
-        5. Review the predicted severity and intensity with confidence scores
+        ### Quick Start Guide
+        
+        1. **Enter Earthquake Details:**
+           - Location (latitude and longitude) of the earthquake epicenter
+           - Magnitude on the Richter scale
+           - Depth of the earthquake (optional, defaults to 10 km)
+        
+        2. **Optional Settings:**
+           - Event date and time
+           - Cause type (earthquake, volcanic, landslide, etc.)
+           - Volcanic explosivity index (if volcanic)
+        
+        3. **Get Predictions:**
+           - Click "Predict Tsunami Risk"
+           - Review predicted severity and intensity
+           - Follow safety recommendations
+        
+        ### Understanding Results
+        
+        **Severity Levels:**
+        - 🟢 **Minor**: Limited coastal impact
+        - 🟡 **Moderate**: Significant coastal flooding possible
+        - 🟠 **Major**: Extensive damage to coastal areas
+        - 🔴 **Extreme**: Catastrophic tsunami event
+        
+        **Intensity:**
+        - 🟢 **Low**: Wave heights typically < 2 meters
+        - 🔴 **High**: Wave heights typically > 2 meters
+        
+        ### Important Notes
+        
+        ⚠️ This is a prediction model and should be used alongside official tsunami warning systems.
+        Always follow local emergency management guidance.
         """
         )
 

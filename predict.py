@@ -7,7 +7,9 @@ from model import TsunamiNet
 class TsunamiPredictor:
     def __init__(self, model_path="tsunami_models.pth"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        checkpoint = torch.load(model_path, map_location=self.device, weights_only=False)
+        checkpoint = torch.load(
+            model_path, map_location=self.device, weights_only=False
+        )
 
         self.scaler = checkpoint["scaler"]
         self.imputer = checkpoint["imputer"]
@@ -33,22 +35,44 @@ class TsunamiPredictor:
         earthquake_magnitude,
         latitude,
         longitude,
-        water_height=None,
-        tsunami_magnitude_abe=None,
-        tsunami_magnitude_iida=None,
-        intensity=None,
-        year=2024,
-        month=1,
-        day=1,
+        earthquake_depth=10.0,
+        year=None,
+        month=None,
+        day=None,
         hour=0,
         minute=0,
         second=0,
         event_validity=4,
         cause_code=1,
         vol=0,
-        num_runups=1,
     ):
+        """
+        Predict tsunami characteristics based on earthquake parameters only.
 
+        Args:
+            earthquake_magnitude: Magnitude of the earthquake (Richter scale)
+            latitude: Latitude of earthquake epicenter
+            longitude: Longitude of earthquake epicenter
+            earthquake_depth: Depth of earthquake in km (default: 10.0)
+            year, month, day: Date of event (defaults to current date if None)
+            event_validity: Validity code (1-4, default: 4)
+            cause_code: Cause of tsunami (1=Earthquake, 2=Volcanic, etc.)
+            vol: Volcanic explosivity index (0 if not volcanic)
+
+        Returns:
+            Dictionary with severity and intensity predictions
+        """
+        from datetime import datetime
+
+        # Use current date if not provided
+        if year is None or month is None or day is None:
+            now = datetime.now()
+            year = year or now.year
+            month = month or now.month
+            day = day or now.day
+
+        # Build input data with earthquake parameters only
+        # Tsunami parameters are set to 0 (unknown) as they are what we're predicting
         input_data = [
             year,
             month,
@@ -63,15 +87,12 @@ class TsunamiPredictor:
             latitude,
             longitude,
         ]
-        input_data.append(water_height if water_height is not None else 0)
-        input_data.append(num_runups)
-        input_data.append(
-            tsunami_magnitude_abe if tsunami_magnitude_abe is not None else 0
-        )
-        input_data.append(
-            tsunami_magnitude_iida if tsunami_magnitude_iida is not None else 0
-        )
-        input_data.append(intensity if intensity is not None else 0)
+        # Set tsunami parameters to 0 (unknown/to be predicted)
+        input_data.append(0)  # water_height (unknown - to be predicted)
+        input_data.append(0)  # num_runups (unknown - to be predicted)
+        input_data.append(0)  # tsunami_magnitude_abe (unknown - to be predicted)
+        input_data.append(0)  # tsunami_magnitude_iida (unknown - to be predicted)
+        input_data.append(0)  # intensity (unknown - to be predicted)
 
         while len(input_data) < self.input_size:
             input_data.append(0)
